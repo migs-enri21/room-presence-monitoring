@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Room Presence System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='presence.css') }}">
+    <style>
+        .topbar-nav {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .nav-link {
+            color: #8ea6be;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid #2d3948;
+            transition: .2s;
+        }
+        .nav-link:hover { color: #f5f7fa; border-color: #4a5d70; }
+        .nav-link.logout { color: #ff8d8d; border-color: #5a2222; }
+        .nav-link.logout:hover { background: #3a0d0d; }
+        .user-badge {
+            color: #8ea6be;
+            font-size: 14px;
+        }
+        .student-thumb {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #2f3d4d;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .student-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 160px;
+        }
+        .student-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: #1a2535;
+            border: 2px dashed #2f3d4d;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .student-label { font-size: 14px; }
+        .student-id-sub { font-size: 11px; color: #5a7a99; }
+    </style>
+</head>
+<body>
+
+<main class="app-shell">
+
+    <header class="topbar">
+        <div>
+            <h1>PRESENCE LOGS DASHBOARD</h1>
+        </div>
+        <div class="topbar-nav">
+            <span class="user-badge">Logged in as <strong>{{ username }}</strong></span>
+            <a href="/" class="nav-link">← Monitor</a>
+            <a href="/logout" class="nav-link logout">Logout</a>
+        </div>
+    </header>
+
+    <section class="event-panel">
+        <div class="section-heading">
+            <h2>Recent Presence Events</h2>
+            <span>Last 20 records from database</span>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Student</th>
+                        <th>Type</th>
+                        <th>Message</th>
+                        <th>Snapshot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="white-space:nowrap">{{ log.timestamp }}</td>
+                        <td>
+                            <div class="student-cell">
+                                {% if log.photo_path %}
+                                <img src="{{ url_for('static', filename=log.photo_path) }}"
+                                     alt="photo" class="student-thumb">
+                                {% else %}
+                                <span class="student-avatar">👤</span>
+                                {% endif %}
+                                <div>
+                                    <div class="student-label">
+                                        {{ log.student_name or '—' }}
+                                    </div>
+                                    {% if log.detected_student_id %}
+                                    <div class="student-id-sub">{{ log.detected_student_id }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="event-status {{ log.log_type }}">
+                                {{ (log.log_type or '').replace('_', ' ') }}
+                            </span>
+                        </td>
+                        <td>{{ log.message or '—' }}</td>
+                        <td style="font-size:12px;color:#5a7a99">{{ log.snapshot_path or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center;color:#6b8099;padding:32px">
+                            No presence events recorded yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+</body>
+</html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Face — {{ student.first_name }} {{ student.last_name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0b1117;
+            background-image: linear-gradient(180deg, #0b1117, #141d27);
+            color: #f5f7fa;
+            font-family: Segoe UI, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 16px;
+        }
+
+        .card {
+            background: #18202a;
+            border: 1px solid #2f3d4d;
+            border-radius: 14px;
+            padding: 36px 40px;
+            width: min(520px, 100%);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #8ea6be;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .back-link:hover { color: #f5f7fa; }
+
+        .student-info {
+            background: #111821;
+            border: 1px solid #2d3948;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .student-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .student-id   { color: #78c7ff; font-size: 14px; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            border: 1px solid #2d3948;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 11px;
+            border: none;
+            background: #111821;
+            color: #8ea6be;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+        }
+        .tab-btn.active { background: #008cff; color: #fff; }
+        .tab-btn:not(.active):hover { background: #1a2535; color: #f5f7fa; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Webcam tab */
+        .instructions {
+            color: #8ea6be;
+            font-size: 13px;
+            margin-bottom: 18px;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        .camera-box {
+            position: relative;
+            background: #111821;
+            border: 2px solid #2f3d4d;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            aspect-ratio: 4/3;
+        }
+        .camera-box video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+            transform: scaleX(-1);
+        }
+        .camera-overlay {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+        .face-guide {
+            width: 170px; height: 210px;
+            border: 3px solid rgba(0,210,106,0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+        }
+
+        /* Upload tab */
+        .upload-zone {
+            border: 2px dashed #2f3d4d;
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: .2s;
+            position: relative;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: #008cff;
+            background: #111d2a;
+        }
+        .upload-zone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer;
+        }
+        .upload-icon { font-size: 40px; margin-bottom: 12px; }
+        .upload-hint { color: #8ea6be; font-size: 14px; margin-bottom: 6px; }
+        .upload-sub  { color: #4a5d70; font-size: 12px; }
+
+        .photo-preview-box {
+            display: none;
+            background: #111821;
+            border: 2px solid #2f3d4d;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .photo-preview-box img {
+            max-width: 100%;
+            max-height: 320px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        .photo-preview-label {
+            padding: 10px;
+            color: #8ea6be;
+            font-size: 13px;
+            border-top: 1px solid #2d3948;
+        }
+
+        /* Shared */
+        .status-box {
+            min-height: 48px;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+        }
+        .status-box.idle    { background: #1a212a; color: #8ea6be; border: 1px solid #2d3948; }
+        .status-box.success { background: #0f3b24; color: #75ffb0; border: 1px solid #1a6040; }
+        .status-box.error   { background: #3a0d0d; color: #ff9898; border: 1px solid #7a2222; }
+        .status-box.loading { background: #1a212a; color: #78c7ff; border: 1px solid #2d3948; }
+        .status-box.warning { background: #2a1e00; color: #ffc96e; border: 1px solid #5a4000; }
+
+        .spinner {
+            width: 18px; height: 18px;
+            border: 3px solid #2d3948;
+            border-top-color: #78c7ff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #00a85a;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: .2s;
+            margin-bottom: 12px;
+        }
+        .btn-primary:hover:not(:disabled) { background: #00c46a; transform: translateY(-2px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-primary.blue { background: #008cff; }
+        .btn-primary.blue:hover:not(:disabled) { background: #22a3ff; }
+
+        .btn-back {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #2d3948;
+            border-radius: 8px;
+            background: transparent;
+            color: #8ea6be;
+            font-size: 14px;
+            cursor: pointer;
+            transition: .2s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        .btn-back:hover { border-color: #4a5d70; color: #f5f7fa; }
+
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+
+    <a href="/students" class="back-link">← Back to Students</a>
+
+    <div class="student-info">
+        <div class="student-name">{{ student.first_name }} {{ student.last_name }}</div>
+        <div class="student-id">Student ID: {{ student.student_id }}</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('webcam', this)">📷 Webcam Capture</button>
+        <button class="tab-btn" onclick="switchTab('upload', this)">📁 Upload Photo</button>
+    </div>
+
+    <!-- Webcam Tab -->
+    <div id="tab-webcam" class="tab-panel active">
+        <p class="instructions">
+            Position the student's face inside the circle, then click <strong>Capture Face</strong>.
+        </p>
+
+        <div class="camera-box">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="camera-overlay">
+                <div class="face-guide"></div>
+            </div>
+        </div>
+
+        <canvas id="canvas"></canvas>
+
+        <div id="webcam-status" class="status-box idle">
+            Ready — align face with the circle
+        </div>
+
+        <button class="btn-primary" id="captureBtn" onclick="captureAndSave()">
+            📸 Capture Face
+        </button>
+    </div>
+
+    <!-- Upload Photo Tab -->
+    <div id="tab-upload" class="tab-panel">
+        <p class="instructions">
+            Upload a clear front-facing photo (JPG or PNG).<br>
+            The face encoding will be extracted automatically.
+        </p>
+
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="photoFile" accept=".jpg,.jpeg,.png" onchange="onFileSelected(this)">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-hint">Click to browse or drag &amp; drop a photo here</div>
+            <div class="upload-sub">JPG / PNG — clear, front-facing, well-lit</div>
+        </div>
+
+        <div class="photo-preview-box" id="previewBox">
+            <img id="previewImg" src="" alt="Preview">
+            <div class="photo-preview-label" id="previewLabel">—</div>
+        </div>
+
+        <div id="upload-status" class="status-box idle">
+            Select a photo to continue
+        </div>
+
+        <button class="btn-primary blue" id="uploadBtn" onclick="uploadPhoto()" disabled>
+            💾 Save Photo &amp; Extract Face
+        </button>
+    </div>
+
+    <a href="/students" class="btn-back">Cancel</a>
+
+</div>
+
+<script>
+const STUDENT_ID = "{{ student.student_id }}";
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Status helpers ────────────────────────────────────────────────────────
+function setStatus(id, type, msg, spinner = false) {
+    const el = document.getElementById(id);
+    el.className = 'status-box ' + type;
+    el.innerHTML = spinner
+        ? `<div class="spinner"></div><span>${msg}</span>`
+        : msg;
+}
+
+// ── Webcam capture ────────────────────────────────────────────────────────
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => { document.getElementById('video').srcObject = stream; })
+    .catch(err => {
+        setStatus('webcam-status', 'error', 'Camera error: ' + err.message);
+        document.getElementById('captureBtn').disabled = true;
+    });
+
+async function captureAndSave() {
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const btn    = document.getElementById('captureBtn');
+
+    btn.disabled = true;
+    setStatus('webcam-status', 'loading', 'Analyzing face…', true);
+
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+
+    try {
+        const res  = await fetch(`/api/students/${STUDENT_ID}/save-face`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.9) })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            setStatus('webcam-status', 'success', '✓ Face registered successfully! Redirecting…');
+            video.srcObject?.getTracks().forEach(t => t.stop());
+            setTimeout(() => window.location.href = '/students', 1800);
+        } else {
+            setStatus('webcam-status', 'error', 'Error: ' + data.error + ' — please try again.');
+            btn.disabled = false;
+        }
+    } catch (e) {
+        setStatus('webcam-status', 'error', 'Network error. Please try again.');
+        btn.disabled = false;
+    }
+}
+
+// ── File upload ───────────────────────────────────────────────────────────
+let selectedFile = null;
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+});
+
+function onFileSelected(input) {
+    if (input.files[0]) handleFile(input.files[0]);
+}
+
+function handleFile(file) {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+        setStatus('upload-status', 'error', 'Only JPG or PNG files are allowed.');
+        return;
+    }
+    selectedFile = file;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('previewLabel').textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+        document.getElementById('previewBox').style.display = 'block';
+        document.getElementById('uploadZone').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+
+    setStatus('upload-status', 'idle', 'Photo selected — click Save to register this student.');
+    document.getElementById('uploadBtn').disabled = false;
+}
+
+async function uploadPhoto() {
+    if (!selectedFile) return;
+
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true;
+    setStatus('upload-status', 'loading', 'Uploading and extracting face…', true);
+
+    const form = new FormData();
+    form.append('photo', selectedFile);
+
+    try {
+        const res  = await fetch(`/api/students/${STUDENT_ID}/upload-photo`, {
+            method: 'POST',
+            body: form
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+            setStatus('upload-status', 'error', 'Error: ' + data.error);
+            btn.disabled = false;
+            return;
+        }
+
+        if (data.encoding_saved) {
+            setStatus('upload-status', 'success', '✓ Photo saved and face registered! Redirecting…');
+        } else {
+            setStatus('upload-status', 'warning',
+                '⚠ Photo saved but face not detected. Try a clearer, front-facing photo. Redirecting…');
+        }
+        setTimeout(() => window.location.href = '/students', 2200);
+    } catch (e) {
+        setStatus('upload-status', 'error', 'Network error. Please try again.');
+        btn.disabled = false;
+    }
+}
+</script>
+
+</body>
+</html>

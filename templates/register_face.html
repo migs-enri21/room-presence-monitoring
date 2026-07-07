@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Registration — Room Presence System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0b1117;
+            background-image: linear-gradient(180deg, #0b1117, #141d27);
+            color: #f5f7fa;
+            font-family: Segoe UI, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: #18202a;
+            border: 1px solid #2f3d4d;
+            border-radius: 14px;
+            padding: 40px;
+            width: min(480px, 94vw);
+            text-align: center;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #00ff80;
+            box-shadow: 0 0 12px #00ff80;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        h1 { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+
+        .subtitle {
+            color: #8ea6be;
+            font-size: 14px;
+            margin-top: 8px;
+            margin-bottom: 24px;
+        }
+
+        .student-badge {
+            display: inline-block;
+            background: #1a2d3d;
+            border: 1px solid #2f3d4d;
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 14px;
+            color: #78c7ff;
+            margin-bottom: 24px;
+        }
+
+        .camera-box {
+            position: relative;
+            background: #111821;
+            border: 2px solid #2f3d4d;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            aspect-ratio: 4/3;
+        }
+
+        .camera-box video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        .camera-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .face-guide {
+            width: 180px; height: 220px;
+            border: 3px solid rgba(0, 210, 106, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+        }
+
+        .status-box {
+            min-height: 44px;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-box.idle    { background: #1a212a; color: #8ea6be; border: 1px solid #2d3948; }
+        .status-box.success { background: #0f3b24; color: #75ffb0; border: 1px solid #1a6040; }
+        .status-box.error   { background: #3a0d0d; color: #ff9898; border: 1px solid #7a2222; }
+        .status-box.loading { background: #1a212a; color: #78c7ff; border: 1px solid #2d3948; }
+
+        .spinner {
+            width: 18px; height: 18px;
+            border: 3px solid #2d3948;
+            border-top-color: #78c7ff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #00a85a;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: .2s;
+            margin-bottom: 12px;
+        }
+
+        button:hover:not(:disabled) { background: #00c46a; transform: translateY(-2px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .skip-link {
+            display: block;
+            color: #6b8099;
+            font-size: 14px;
+            text-decoration: none;
+            margin-top: 4px;
+        }
+
+        .skip-link:hover { color: #8ea6be; }
+
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1><span class="dot"></span>FACE REGISTRATION</h1>
+    <p class="subtitle">Position your face inside the circle and click Capture</p>
+    <div class="student-badge">Student ID: {{ student_id }}</div>
+
+    <div class="camera-box">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="camera-overlay">
+            <div class="face-guide"></div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="status" class="status-box idle">Ready — align your face with the circle</div>
+
+    <button id="captureBtn">Capture Face</button>
+    <a href="/login" class="skip-link">Skip for now (you can do this later)</a>
+</div>
+
+<script>
+const video   = document.getElementById('video');
+const canvas  = document.getElementById('canvas');
+const status  = document.getElementById('status');
+const btn     = document.getElementById('captureBtn');
+const STUDENT_ID = "{{ student_id }}";
+
+function setStatus(type, msg, spinner = false) {
+    status.className = 'status-box ' + type;
+    status.innerHTML = spinner
+        ? `<div class="spinner"></div><span>${msg}</span>`
+        : msg;
+}
+
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => { video.srcObject = stream; })
+    .catch(err => setStatus('error', 'Camera error: ' + err.message));
+
+btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    setStatus('loading', 'Analyzing face…', true);
+
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+    try {
+        const res  = await fetch('/api/save-face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_id: STUDENT_ID, image: imageData })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            setStatus('success', '✓ Face registered! Redirecting to login…');
+            video.srcObject.getTracks().forEach(t => t.stop());
+            setTimeout(() => window.location.href = '/login', 1800);
+        } else {
+            setStatus('error', 'Error: ' + data.error + ' — please try again.');
+            btn.disabled = false;
+        }
+    } catch (e) {
+        setStatus('error', 'Network error. Please try again.');
+        btn.disabled = false;
+    }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Presence Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='presence.css') }}">
+</head>
+<body>
+
+<main class="app-shell">
+
+    <header class="topbar">
+
+        <div>
+
+            <h1>ROOM PRESENCE MONITORING SYSTEM</h1>
+
+        </div>
+
+        <div class="status-pill">
+
+            <span class="online-dot"></span>
+
+            SYSTEM ONLINE
+
+        </div>
+
+        <div class="status-pill" id="clock">--:--:--</div>
+
+        <div style="display:flex;gap:10px;align-items:center;font-size:14px;">
+            <span style="color:#8ea6be;">{{ username }}</span>
+            <a href="/students" style="color:#8ea6be;text-decoration:none;padding:8px 14px;border:1px solid #2d3948;border-radius:20px;">Students</a>
+            <a href="/dashboard" style="color:#8ea6be;text-decoration:none;padding:8px 14px;border:1px solid #2d3948;border-radius:20px;">Dashboard</a>
+            <a href="/logout" style="color:#ff8d8d;text-decoration:none;padding:8px 14px;border:1px solid #5a2222;border-radius:20px;">Logout</a>
+        </div>
+
+    </header>
+
+    <section class="dashboard-status">
+
+        <div class="status-card">
+
+            <h3>Active Cameras</h3>
+
+            <h2>2</h2>
+
+        </div>
+
+        <div class="status-card">
+
+            <h3>Detection</h3>
+
+            <h2>Motion + Presence</h2>
+
+        </div>
+
+        <div class="status-card">
+
+            <h3>Platform</h3>
+
+            <h2>Raspberry Pi 4</h2>
+
+        </div>
+
+    </section>
+
+    <section class="control-panel">
+
+        <div class="section-heading">
+
+            <h2>System Configuration</h2>
+
+        </div>
+
+        <form id="settingsForm" class="settings-grid">
+
+            <label>
+
+                Start Time
+
+                <input type="time"
+                       id="startTime"
+                       name="start_time"
+                       value="08:00">
+
+            </label>
+
+            <label>
+
+                End Time
+
+                <input type="time"
+                       id="endTime"
+                       name="end_time"
+                       value="17:00">
+
+            </label>
+
+            <label>
+
+                Android IP Camera
+
+                <input type="url"
+                       id="phoneSource"
+                       name="phone_source"
+                       placeholder="http://phone-ip:8080/video">
+
+            </label>
+
+            <label>
+
+                Motion Sensitivity
+
+                <input type="number"
+                       id="motionSensitivity"
+                       name="motion_sensitivity"
+                       min="500"
+                       step="500"
+                       value="2500">
+
+            </label>
+
+            <label>
+
+                Snapshot Cooldown (seconds)
+
+                <input type="number"
+                       id="snapshotCooldown"
+                       name="snapshot_cooldown_seconds"
+                       min="10"
+                       step="10"
+                       value="60">
+
+            </label>
+
+            <div class="checks">
+
+                <label class="check-row">
+
+                    <input type="checkbox"
+                           id="laptopEnabled"
+                           checked>
+
+                    Laptop Camera
+
+                </label>
+
+                <label class="check-row">
+
+                    <input type="checkbox"
+                           id="phoneEnabled"
+                           checked>
+
+                    Android Camera
+
+                </label>
+
+            </div>
+
+            <button type="submit">
+
+                Save Configuration
+
+            </button>
+
+        </form>
+
+    </section>
+
+    <section class="camera-grid">
+
+        <article class="camera-card">
+
+            <div class="camera-heading">
+
+                <div>
+
+                    <h2>💻 Laptop Camera</h2>
+
+                    <span>USB / Built-in Webcam</span>
+
+                </div>
+
+                <div class="camera-status">
+
+                    🟢 ONLINE
+
+                </div>
+
+            </div>
+
+            <img src="{{ url_for('video', camera_id='laptop') }}"
+                 alt="Laptop Camera">
+
+        </article>
+
+        <article class="camera-card">
+
+            <div class="camera-heading">
+
+                <div>
+
+                    <h2>📱 Android Camera</h2>
+
+                    <span>IP Webcam Stream</span>
+
+                </div>
+
+                <div class="camera-status">
+
+                    🟢 ONLINE
+
+                </div>
+
+            </div>
+
+            <img src="{{ url_for('video', camera_id='phone') }}"
+                 alt="Phone Camera">
+
+        </article>
+
+    </section>
+
+    <section class="event-panel">
+
+        <div class="section-heading">
+
+            <h2>Presence Event Logs</h2>
+
+            <span>CSV logs are saved automatically.</span>
+
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Timestamp</th>
+
+                        <th>Camera</th>
+
+                        <th>Status</th>
+
+                        <th>Message</th>
+
+                        <th>Snapshot</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="eventsBody">
+
+                    <tr>
+
+                        <td colspan="5">
+
+                            Waiting for presence events...
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+<script>
+
+const form = document.getElementById("settingsForm");
+const eventsBody = document.getElementById("eventsBody");
+const clock = document.getElementById("clock");
+
+function updateClock(){
+    clock.textContent = new Date().toLocaleTimeString();
+}
+
+async function loadConfig(){
+
+    const response = await fetch("/api/config");
+    const config = await response.json();
+
+    document.getElementById("startTime").value = config.start_time;
+    document.getElementById("endTime").value = config.end_time;
+    document.getElementById("motionSensitivity").value = config.motion_sensitivity;
+    document.getElementById("snapshotCooldown").value = config.snapshot_cooldown_seconds;
+
+    const laptop = config.cameras.find(c=>c.id==="laptop");
+    const phone = config.cameras.find(c=>c.id==="phone");
+
+    document.getElementById("laptopEnabled").checked = laptop?.enabled ?? true;
+    document.getElementById("phoneEnabled").checked = phone?.enabled ?? true;
+    document.getElementById("phoneSource").value = phone?.source ?? "";
+
+}
+
+async function loadEvents(){
+
+    const response = await fetch("/api/events");
+    const events = await response.json();
+
+    if(!events.length){
+
+        eventsBody.innerHTML =
+        '<tr><td colspan="5">Waiting for presence events...</td></tr>';
+
+        return;
+
+    }
+
+    eventsBody.innerHTML = events.map(event=>`
+
+<tr>
+
+<td>${event.timestamp}</td>
+
+<td>${event.camera_name}</td>
+
+<td>
+
+<span class="event-status ${event.status}">
+
+${event.status.replaceAll("_"," ")}
+
+</span>
+
+</td>
+
+<td>${event.message}</td>
+
+<td>${event.snapshot}</td>
+
+</tr>
+
+`).join("");
+
+}
+
+form.addEventListener("submit",async(event)=>{
+
+    event.preventDefault();
+
+    await fetch("/api/config",{
+
+        method:"POST",
+
+        headers:{
+
+            "Content-Type":"application/json"
+
+        },
+
+        body:JSON.stringify({
+
+            start_time:document.getElementById("startTime").value,
+
+            end_time:document.getElementById("endTime").value,
+
+            phone_source:document.getElementById("phoneSource").value,
+
+            motion_sensitivity:document.getElementById("motionSensitivity").value,
+
+            snapshot_cooldown_seconds:document.getElementById("snapshotCooldown").value,
+
+            laptop_enabled:document.getElementById("laptopEnabled").checked,
+
+            phone_enabled:document.getElementById("phoneEnabled").checked
+
+        })
+
+    });
+
+    await loadConfig();
+
+});
+
+loadConfig();
+loadEvents();
+updateClock();
+
+setInterval(loadEvents,3000);
+setInterval(updateClock,1000);
+
+</script>
+
+</body>
+</html>

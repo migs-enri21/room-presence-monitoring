@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students — Room Presence System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='presence.css') }}">
+    <style>
+        /* ── Nav ─────────────────────────────────────────── */
+        .topbar-nav { display: flex; gap: 12px; align-items: center; }
+        .nav-link {
+            color: #8ea6be; text-decoration: none; font-size: 14px;
+            padding: 8px 14px; border-radius: 20px; border: 1px solid #2d3948; transition: .2s;
+        }
+        .nav-link:hover { color: #f5f7fa; border-color: #4a5d70; }
+        .nav-link.logout { color: #ff8d8d; border-color: #5a2222; }
+        .nav-link.logout:hover { background: #3a0d0d; }
+
+        /* ── Stats ───────────────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #18202a;
+            border: 1px solid #2f3d4d;
+            border-radius: 12px;
+            padding: 22px;
+            text-align: center;
+        }
+        .stat-card h3 { color: #8ea6be; font-size: 13px; margin-bottom: 8px; letter-spacing: .04em; }
+        .stat-card h2 { font-size: 30px; font-weight: 700; }
+        .stat-card h2.green  { color: #00d26a; }
+        .stat-card h2.orange { color: #ffa050; }
+
+        /* ── Panel ───────────────────────────────────────── */
+        .student-panel {
+            background: #18202a;
+            border: 1px solid #2f3d4d;
+            border-radius: 12px;
+            padding: 24px 26px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .panel-header h2 { font-size: 17px; font-weight: 700; }
+
+        .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+        .search-box {
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 1px solid #3f4d5c;
+            background: #111821;
+            color: #f5f7fa;
+            font-size: 14px;
+            width: 220px;
+        }
+        .search-box:focus { outline: none; border-color: #008cff; }
+
+        /* ── Toolbar buttons ─────────────────────────────── */
+        .btn {
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .15s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        .btn-ghost  { border: 1px solid #2d3948; background: transparent; color: #8ea6be; }
+        .btn-ghost:hover  { border-color: #4a5d70; background: #1a2535; color: #f5f7fa; }
+        .btn-primary-sm  { border: none; background: #008cff; color: #fff; }
+        .btn-primary-sm:hover { background: #22a3ff; }
+
+        /* ── Table ───────────────────────────────────────── */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #111821; }
+        th { padding: 12px 16px; text-align: left; font-size: 12px; color: #8ea6be; letter-spacing: .06em; text-transform: uppercase; }
+        td { padding: 12px 16px; border-top: 1px solid #2d3948; font-size: 14px; vertical-align: middle; }
+        tbody tr:hover { background: #1e2a36; }
+
+        .student-photo {
+            width: 40px; height: 40px; border-radius: 50%;
+            object-fit: cover; border: 2px solid #2f3d4d;
+        }
+        .photo-placeholder {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: #1a2535; border: 2px dashed #2f3d4d;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 17px; color: #3d5068;
+        }
+
+        .face-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        }
+        .face-badge.yes { background: #0f3b24; color: #75ffb0; border: 1px solid #1a6040; }
+        .face-badge.no  { background: #2a2000; color: #ffa050; border: 1px solid #5a4000; }
+
+        .action-btns { display: flex; gap: 6px; align-items: center; }
+
+        /* Course pills */
+        .course-pills { display: flex; flex-wrap: wrap; gap: 5px; min-width: 120px; }
+        .course-pill {
+            padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700;
+            background: #0d2a3d; color: #78c7ff; border: 1px solid #1a4a6a;
+            white-space: nowrap;
+        }
+        .no-course { color: #3d5068; font-size: 12px; }
+        .btn-manage {
+            padding: 5px 10px; border: 1px solid #2d3948; border-radius: 7px;
+            background: transparent; color: #8ea6be; font-size: 11px; font-weight: 600;
+            cursor: pointer; transition: .15s; white-space: nowrap;
+        }
+        .btn-manage:hover { color: #f5f7fa; border-color: #4a5d70; background: #1a2535; }
+
+        .btn-capture {
+            padding: 6px 12px; border: none; border-radius: 7px;
+            background: #008cff; color: white; font-size: 12px; font-weight: 600;
+            cursor: pointer; text-decoration: none; display: inline-block; transition: .15s;
+        }
+        .btn-capture:hover { background: #22a3ff; }
+        .btn-capture.retake { background: #1a2d3d; border: 1px solid #2f3d4d; color: #78c7ff; }
+        .btn-capture.retake:hover { background: #1e3548; }
+
+        .btn-delete {
+            padding: 6px 10px; border: 1px solid #5a2222; border-radius: 7px;
+            background: transparent; color: #ff8d8d; font-size: 13px;
+            cursor: pointer; transition: .15s;
+        }
+        .btn-delete:hover { background: #3a0d0d; border-color: #7a2222; }
+
+        .empty-row td { text-align: center; color: #6b8099; padding: 48px; }
+
+        @media (max-width: 900px) { .stats-row { grid-template-columns: 1fr; } }
+
+        /* ── Shared Modal base ───────────────────────────── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: #18202a; border: 1px solid #2f3d4d;
+            border-radius: 16px; padding: 36px 40px; width: min(440px, 94vw);
+        }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .modal-sub   { color: #8ea6be; font-size: 13px; margin-bottom: 26px; }
+
+        .form-field { margin-bottom: 15px; }
+        .form-field label { display: block; font-size: 12px; color: #8ea6be; margin-bottom: 6px; letter-spacing: .05em; text-transform: uppercase; }
+        .form-field input {
+            width: 100%; padding: 11px 14px;
+            background: #111821; border: 1px solid #3f4d5c;
+            border-radius: 8px; color: #f5f7fa; font-size: 15px;
+        }
+        .form-field input:focus { outline: none; border-color: #008cff; }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+        .modal-actions .btn-primary-sm  { flex: 1; justify-content: center; padding: 11px; font-size: 14px; }
+        .modal-actions .btn-ghost { flex: 1; justify-content: center; padding: 11px; font-size: 14px; }
+
+        .modal-result {
+            margin-top: 14px; padding: 10px 14px;
+            border-radius: 8px; font-size: 13px; display: none;
+        }
+        .modal-result.success { background: #0f3b24; color: #75ffb0; border: 1px solid #1a6040; display: block; }
+        .modal-result.error   { background: #3a0d0d; color: #ff9898; border: 1px solid #7a2222; display: block; }
+        .modal-result.warning { background: #2a1e00; color: #ffc96e; border: 1px solid #5a4000; display: block; }
+
+        /* ── Import CSV modal specifics ──────────────────── */
+        .drop-zone {
+            border: 2px dashed #3f4d5c; border-radius: 12px;
+            padding: 32px 20px; text-align: center; cursor: pointer;
+            transition: .2s; position: relative; margin-bottom: 4px;
+        }
+        .drop-zone:hover, .drop-zone.over { border-color: #008cff; background: #111d2a; }
+        .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .drop-zone .dz-icon  { font-size: 36px; margin-bottom: 10px; }
+        .drop-zone .dz-main  { font-size: 14px; color: #c8d8e8; margin-bottom: 4px; }
+        .drop-zone .dz-sub   { font-size: 12px; color: #5a7a99; }
+        .drop-zone .dz-file  { font-size: 13px; color: #00d26a; font-weight: 600; margin-top: 8px; }
+
+        .format-hint {
+            background: #111821; border: 1px solid #2d3948; border-radius: 8px;
+            padding: 10px 14px; font-size: 12px; color: #5a7a99;
+            font-family: monospace; margin-bottom: 18px; line-height: 1.8;
+        }
+        .format-hint span { color: #78c7ff; }
+    </style>
+</head>
+<body>
+
+<main class="app-shell">
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <div><h1>STUDENT MANAGEMENT</h1></div>
+        <div class="topbar-nav">
+            <span style="color:#8ea6be;font-size:14px;">{{ username }}</span>
+            <a href="/"          class="nav-link">← Monitor</a>
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/logout"   class="nav-link logout">Logout</a>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <h3>Total Students</h3>
+            <h2>{{ students | length }}</h2>
+        </div>
+        <div class="stat-card">
+            <h3>Face Registered</h3>
+            <h2 class="green">{{ students | selectattr('has_face') | list | length }}</h2>
+        </div>
+        <div class="stat-card">
+            <h3>No Face Yet</h3>
+            <h2 class="orange">{{ students | rejectattr('has_face') | list | length }}</h2>
+        </div>
+    </div>
+
+    <!-- Student List -->
+    <div class="student-panel">
+        <div class="panel-header">
+            <h2>All Students</h2>
+            <div class="toolbar">
+                <input class="search-box" id="searchBox"
+                       placeholder="Search name or ID…" oninput="filterTable()">
+                <button class="btn btn-ghost"       onclick="openImport()">📥 Import CSV</button>
+                <a      class="btn btn-ghost"        href="/students/export">📤 Export CSV</a>
+                <button class="btn btn-primary-sm"  onclick="openAdd()">+ Add Student</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table id="studentTable">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Student ID</th>
+                        <th>Last Name</th>
+                        <th>First Name</th>
+                        <th>Face</th>
+                        <th>Enrolled Courses</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td>
+                            {% if s.photo_path %}
+                            <img src="{{ url_for('static', filename=s.photo_path) }}"
+                                 alt="{{ s.first_name }}" class="student-photo">
+                            {% else %}
+                            <span class="photo-placeholder">👤</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ s.student_id }}</td>
+                        <td>{{ s.last_name }}</td>
+                        <td>{{ s.first_name }}</td>
+                        <td>
+                            {% if s.has_face %}
+                            <span class="face-badge yes">✓ Done</span>
+                            {% else %}
+                            <span class="face-badge no">⚠ Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <div class="course-pills">
+                                    {% if s.enrolled_courses %}
+                                        {% for c in s.enrolled_courses.split(',') %}
+                                        <span class="course-pill">{{ c.strip() }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="no-course">No courses</span>
+                                    {% endif %}
+                                </div>
+                                <button class="btn-manage"
+                                        onclick="openEnroll('{{ s.student_id }}','{{ s.first_name }} {{ s.last_name }}')">
+                                    ＋ Manage
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <a href="/students/{{ s.student_id }}/capture"
+                                   class="btn-capture {% if s.has_face %}retake{% endif %}">
+                                    {% if s.has_face %}↺ Retake{% else %}📷 Capture{% endif %}
+                                </a>
+                                <button class="btn-delete"
+                                        onclick="deleteStudent('{{ s.student_id }}','{{ s.first_name }} {{ s.last_name }}')">
+                                    🗑
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty-row">
+                        <td colspan="7">
+                            No students yet — click <strong>Import CSV</strong> or <strong>+ Add Student</strong> above.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Courses Panel -->
+    <div class="student-panel" style="margin-top:24px;">
+        <div class="panel-header">
+            <h2>📅 Course Schedules</h2>
+            <button class="btn btn-primary-sm" onclick="openAddCourse()">+ Add Course</button>
+        </div>
+
+        <div class="table-wrap">
+            <table id="courseTable">
+                <thead>
+                    <tr>
+                        <th>Course Code</th>
+                        <th>Days</th>
+                        <th>Time</th>
+                        <th>Room</th>
+                        <th>Enrolled Students</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in courses %}
+                    <tr>
+                        <td><span class="course-pill">{{ c.course_code }}</span></td>
+                        <td>{{ c.days }}</td>
+                        <td>{{ c.time_window }}</td>
+                        <td>{{ c.room }}</td>
+                        <td style="color:#8ea6be;font-size:13px;">
+                            {{ c.student_count }} student{% if c.student_count != 1 %}s{% endif %}
+                        </td>
+                        <td>
+                            <button class="btn-delete"
+                                    onclick="deleteCourse('{{ c.course_code }}')">🗑</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty-row">
+                        <td colspan="6">No courses yet — click <strong>+ Add Course</strong> above.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<!-- ── Enrollment Modal ──────────────────────────────────────── -->
+<div class="modal-overlay" id="enrollOverlay" onclick="closeBg(event,'enrollOverlay')">
+    <div class="modal" style="width:min(480px,94vw)">
+        <div class="modal-title">📋 Manage Schedule</div>
+        <div class="modal-sub" id="enroll-sub">—</div>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-size:12px;color:#8ea6be;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Enrolled Courses</div>
+            <div id="enroll-list" style="display:flex;flex-wrap:wrap;gap:8px;min-height:36px;">
+                <span style="color:#3d5068;font-size:13px;">Loading…</span>
+            </div>
+        </div>
+
+        <div style="border-top:1px solid #2d3948;padding-top:16px;margin-bottom:4px;">
+            <div style="font-size:12px;color:#8ea6be;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Add a Course</div>
+            <div style="display:flex;gap:8px;">
+                <select id="courseSelect" style="flex:1;padding:10px 12px;background:#111821;border:1px solid #3f4d5c;border-radius:8px;color:#f5f7fa;font-size:14px;">
+                    <option value="">— select a course —</option>
+                </select>
+                <button class="btn btn-primary-sm" onclick="addEnrollment()" style="padding:10px 18px;">Add</button>
+            </div>
+            <div id="enroll-msg" style="margin-top:10px;font-size:13px;display:none;"></div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:20px;">
+            <button class="btn btn-ghost" onclick="closeEnroll()" style="flex:1;justify-content:center;padding:11px;">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Add Course Modal ──────────────────────────────────────── -->
+<div class="modal-overlay" id="addCourseOverlay" onclick="closeBg(event,'addCourseOverlay')">
+    <div class="modal">
+        <div class="modal-title">📅 Add Course</div>
+        <div class="modal-sub">Enter the course schedule details.</div>
+
+        <div class="form-field">
+            <label>Course Code</label>
+            <input type="text" id="c-code" placeholder="e.g. Capstone 1" autocomplete="off">
+        </div>
+        <div class="form-field">
+            <label>Days</label>
+            <input type="text" id="c-days" placeholder="e.g. MWF or TTH or MTWTHF" autocomplete="off">
+        </div>
+        <div class="form-field">
+            <label>Time (24-hour format)</label>
+            <input type="text" id="c-time" placeholder="e.g. 09:20-11:10" autocomplete="off">
+        </div>
+        <div class="form-field">
+            <label>Room</label>
+            <input type="text" id="c-room" placeholder="e.g. IC-I1002" autocomplete="off">
+        </div>
+
+        <div id="course-result" class="modal-result"></div>
+
+        <div class="modal-actions">
+            <button class="btn btn-primary-sm" id="saveCourseBtn" onclick="saveCourse()">Save Course</button>
+            <button class="btn btn-ghost" onclick="closeAddCourse()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Import CSV Modal ──────────────────────────────────────── -->
+<div class="modal-overlay" id="importOverlay" onclick="closeBg(event,'importOverlay')">
+    <div class="modal">
+        <div class="modal-title">📥 Import Students</div>
+        <div class="modal-sub">Upload a CSV file to add or update students in bulk.</div>
+
+        <div class="format-hint">
+            Format: <span>student_id, last_name, first_name</span><br>
+            Example: <span>11001, Dela Cruz, Juan</span>
+        </div>
+
+        <div class="drop-zone" id="importDrop">
+            <input type="file" id="importFile" accept=".csv"
+                   onchange="onImportFile(this)"
+                   ondragover="onDragOver(event,'importDrop')"
+                   ondragleave="offDrag('importDrop')"
+                   ondrop="onDrop(event,'importDrop','importFile')">
+            <div class="dz-icon">📄</div>
+            <div class="dz-main">Click to browse or drag &amp; drop</div>
+            <div class="dz-sub">CSV files only</div>
+            <div class="dz-file" id="importFileName"></div>
+        </div>
+
+        <div id="import-result" class="modal-result"></div>
+
+        <div class="modal-actions">
+            <button class="btn btn-primary-sm" id="importBtn" onclick="runImport()" disabled>Upload</button>
+            <button class="btn btn-ghost" onclick="closeImport()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Add Student Modal ─────────────────────────────────────── -->
+<div class="modal-overlay" id="addOverlay" onclick="closeBg(event,'addOverlay')">
+    <div class="modal">
+        <div class="modal-title">+ Add Student</div>
+        <div class="modal-sub">Manually add a single student record.</div>
+
+        <div class="form-field">
+            <label>Student ID</label>
+            <input type="text" id="inp-id" placeholder="e.g. 11001" autocomplete="off">
+        </div>
+        <div class="form-field">
+            <label>Last Name</label>
+            <input type="text" id="inp-last" placeholder="e.g. Dela Cruz" autocomplete="off">
+        </div>
+        <div class="form-field">
+            <label>First Name</label>
+            <input type="text" id="inp-first" placeholder="e.g. Juan" autocomplete="off">
+        </div>
+
+        <div id="add-result" class="modal-result"></div>
+
+        <div class="modal-actions">
+            <button class="btn btn-primary-sm" id="saveBtn" onclick="saveStudent()">Save</button>
+            <button class="btn btn-ghost" onclick="closeAdd()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ── Table filter ─────────────────────────────────────────────── */
+function filterTable() {
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    document.querySelectorAll('#studentTable tbody tr:not(.empty-row)').forEach(row => {
+        const text = [1,2,3].map(i => row.cells[i]?.textContent || '').join(' ').toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+/* ── Modal helpers ───────────────────────────────────────────── */
+function closeBg(e, id) {
+    if (e.target === document.getElementById(id))
+        document.getElementById(id).classList.remove('open');
+}
+
+/* ── Import modal ────────────────────────────────────────────── */
+function openImport() {
+    document.getElementById('importFile').value = '';
+    document.getElementById('importFileName').textContent = '';
+    document.getElementById('import-result').className = 'modal-result';
+    document.getElementById('importBtn').disabled = true;
+    document.getElementById('importOverlay').classList.add('open');
+}
+function closeImport() {
+    document.getElementById('importOverlay').classList.remove('open');
+}
+
+function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('over'); }
+function offDrag(id)        { document.getElementById(id).classList.remove('over'); }
+function onDrop(e, dropId, inputId) {
+    e.preventDefault(); offDrag(dropId);
+    const dt = e.dataTransfer;
+    if (!dt.files.length) return;
+    const input = document.getElementById(inputId);
+    const transfer = new DataTransfer();
+    transfer.items.add(dt.files[0]);
+    input.files = transfer.files;
+    onImportFile(input);
+}
+function onImportFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById('importFileName').textContent = '📎 ' + file.name;
+    document.getElementById('import-result').className = 'modal-result';
+    document.getElementById('importBtn').disabled = false;
+}
+
+async function runImport() {
+    const input = document.getElementById('importFile');
+    const btn   = document.getElementById('importBtn');
+    const res_el = document.getElementById('import-result');
+    if (!input.files.length) return;
+
+    btn.disabled = true; btn.textContent = 'Uploading…';
+
+    const form = new FormData();
+    form.append('file', input.files[0]);
+
+    try {
+        const res  = await fetch('/api/upload/students', { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.ok) {
+            res_el.className = 'modal-result success';
+            res_el.textContent = `✓ ${data.inserted} students added, ${data.skipped} skipped.`;
+            setTimeout(() => window.location.reload(), 1400);
+        } else {
+            res_el.className = 'modal-result error';
+            res_el.textContent = 'Error: ' + data.error;
+            btn.disabled = false; btn.textContent = 'Upload';
+        }
+    } catch {
+        res_el.className = 'modal-result error';
+        res_el.textContent = 'Network error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Upload';
+    }
+}
+
+/* ── Add Student modal ───────────────────────────────────────── */
+function openAdd() {
+    ['inp-id','inp-last','inp-first'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('add-result').className = 'modal-result';
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('saveBtn').textContent = 'Save';
+    document.getElementById('addOverlay').classList.add('open');
+    document.getElementById('inp-id').focus();
+}
+function closeAdd() { document.getElementById('addOverlay').classList.remove('open'); }
+
+async function saveStudent() {
+    const student_id = document.getElementById('inp-id').value.trim();
+    const last_name  = document.getElementById('inp-last').value.trim();
+    const first_name = document.getElementById('inp-first').value.trim();
+    const res_el     = document.getElementById('add-result');
+    const btn        = document.getElementById('saveBtn');
+
+    if (!student_id || !last_name || !first_name) {
+        res_el.className = 'modal-result error';
+        res_el.textContent = 'All three fields are required.';
+        return;
+    }
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+        const res  = await fetch('/api/students/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_id, last_name, first_name })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            res_el.className = 'modal-result success';
+            res_el.textContent = '✓ Student added! Reloading…';
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            res_el.className = 'modal-result error';
+            res_el.textContent = data.error;
+            btn.disabled = false; btn.textContent = 'Save';
+        }
+    } catch {
+        res_el.className = 'modal-result error';
+        res_el.textContent = 'Network error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Save';
+    }
+}
+
+/* ── Delete ──────────────────────────────────────────────────── */
+async function deleteStudent(id, name) {
+    if (!confirm(`Delete ${name} (${id})?\nThis cannot be undone.`)) return;
+    try {
+        const res  = await fetch(`/api/students/${id}/delete`, { method: 'DELETE' });
+        const data = await res.json();
+        data.ok ? window.location.reload() : alert('Error: ' + data.error);
+    } catch { alert('Network error. Please try again.'); }
+}
+
+/* ── Course modal ────────────────────────────────────────────── */
+function openAddCourse() {
+    ['c-code','c-days','c-time','c-room'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('course-result').className = 'modal-result';
+    document.getElementById('saveCourseBtn').disabled = false;
+    document.getElementById('saveCourseBtn').textContent = 'Save Course';
+    document.getElementById('addCourseOverlay').classList.add('open');
+    document.getElementById('c-code').focus();
+}
+function closeAddCourse() { document.getElementById('addCourseOverlay').classList.remove('open'); }
+
+async function saveCourse() {
+    const course_code = document.getElementById('c-code').value.trim();
+    const days        = document.getElementById('c-days').value.trim();
+    const time_window = document.getElementById('c-time').value.trim();
+    const room        = document.getElementById('c-room').value.trim();
+    const res_el      = document.getElementById('course-result');
+    const btn         = document.getElementById('saveCourseBtn');
+
+    if (!course_code || !days || !time_window || !room) {
+        res_el.className = 'modal-result error';
+        res_el.textContent = 'All fields are required.';
+        return;
+    }
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+        const res  = await fetch('/api/courses/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ course_code, days, time_window, room })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            res_el.className = 'modal-result success';
+            res_el.textContent = '✓ Course added! Reloading…';
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            res_el.className = 'modal-result error';
+            res_el.textContent = data.error;
+            btn.disabled = false; btn.textContent = 'Save Course';
+        }
+    } catch {
+        res_el.className = 'modal-result error';
+        res_el.textContent = 'Network error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Save Course';
+    }
+}
+
+async function deleteCourse(code) {
+    if (!confirm(`Delete course "${code}"?\nThis will also remove all enrollments for this course.`)) return;
+    const res  = await fetch(`/api/courses/${encodeURIComponent(code)}`, { method: 'DELETE' });
+    const data = await res.json();
+    data.ok ? window.location.reload() : alert('Error deleting course.');
+}
+
+/* ── Enrollment modal ────────────────────────────────────────── */
+let currentEnrollStudent = null;
+let allCourses = [];
+
+async function openEnroll(sid, name) {
+    currentEnrollStudent = sid;
+    document.getElementById('enroll-sub').textContent = name + ' · ' + sid;
+    document.getElementById('enroll-msg').style.display = 'none';
+    document.getElementById('enrollOverlay').classList.add('open');
+    await loadEnrollData();
+}
+function closeEnroll() {
+    document.getElementById('enrollOverlay').classList.remove('open');
+    window.location.reload();
+}
+
+async function loadEnrollData() {
+    const [enrollRes, coursesRes] = await Promise.all([
+        fetch(`/api/students/${currentEnrollStudent}/enrollments`),
+        fetch('/api/courses')
+    ]);
+    const enrolled = await enrollRes.json();
+    allCourses     = await coursesRes.json();
+
+    // Render enrolled list
+    const list = document.getElementById('enroll-list');
+    if (enrolled.length === 0) {
+        list.innerHTML = '<span style="color:#3d5068;font-size:13px;">No courses enrolled yet.</span>';
+    } else {
+        list.innerHTML = enrolled.map(c => `
+            <span style="display:inline-flex;align-items:center;gap:6px;
+                         padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700;
+                         background:#0d2a3d;color:#78c7ff;border:1px solid #1a4a6a;">
+                ${c.course_code}
+                <span style="font-size:11px;color:#5a7a99;">${c.days} ${c.time_window}</span>
+                <button onclick="removeEnrollment('${c.course_code}')"
+                        style="background:none;border:none;color:#ff8d8d;cursor:pointer;
+                               font-size:14px;line-height:1;padding:0 2px;">×</button>
+            </span>
+        `).join('');
+    }
+
+    // Populate dropdown with unenrolled courses only
+    const enrolledCodes = enrolled.map(c => c.course_code);
+    const available = allCourses.filter(c => !enrolledCodes.includes(c.course_code));
+    const sel = document.getElementById('courseSelect');
+    sel.innerHTML = '<option value="">— select a course —</option>' +
+        available.map(c =>
+            `<option value="${c.course_code}">${c.course_code} · ${c.days} ${c.time_window} · ${c.room}</option>`
+        ).join('');
+}
+
+async function addEnrollment() {
+    const course_code = document.getElementById('courseSelect').value;
+    const msg = document.getElementById('enroll-msg');
+    if (!course_code) return;
+
+    const res  = await fetch(`/api/students/${currentEnrollStudent}/enroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ course_code })
+    });
+    const data = await res.json();
+    msg.style.display = 'block';
+    if (data.ok) {
+        msg.style.color = '#75ffb0';
+        msg.textContent = `✓ Enrolled in ${course_code}`;
+        await loadEnrollData();
+    } else {
+        msg.style.color = '#ff9898';
+        msg.textContent = 'Error: ' + data.error;
+    }
+}
+
+async function removeEnrollment(course_code) {
+    const msg = document.getElementById('enroll-msg');
+    await fetch(`/api/students/${currentEnrollStudent}/enroll/${course_code}`, { method: 'DELETE' });
+    msg.style.display = 'block';
+    msg.style.color = '#ffa050';
+    msg.textContent = `Removed from ${course_code}`;
+    await loadEnrollData();
+}
+
+/* ── Keyboard shortcuts ──────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        closeImport(); closeAdd(); closeEnroll(); closeAddCourse();
+    }
+    if (e.key === 'Enter') {
+        if (document.getElementById('addOverlay').classList.contains('open'))     saveStudent();
+        if (document.getElementById('importOverlay').classList.contains('open'))  runImport();
+        if (document.getElementById('addCourseOverlay').classList.contains('open')) saveCourse();
+    }
+});
+</script>
+
+</body>
+</html>

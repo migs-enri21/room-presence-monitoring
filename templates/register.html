@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Setup — Room Presence System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0b1117;
+            background-image: linear-gradient(180deg, #0b1117, #141d27);
+            color: #f5f7fa;
+            font-family: Segoe UI, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: #18202a;
+            border: 1px solid #2f3d4d;
+            border-radius: 16px;
+            padding: 44px 40px;
+            width: min(400px, 94vw);
+        }
+
+        .brand { text-align: center; margin-bottom: 28px; }
+
+        .dot {
+            display: inline-block;
+            width: 11px; height: 11px;
+            border-radius: 50%;
+            background: #00ff80;
+            box-shadow: 0 0 10px #00ff80;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .brand h1 { font-size: 19px; font-weight: 700; letter-spacing: 1px; }
+        .brand p  { color: #8ea6be; font-size: 13px; margin-top: 8px; }
+
+        .setup-notice {
+            background: #1a2d1a;
+            border: 1px solid #2a4a2a;
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: #75ffb0;
+            font-size: 13px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .error {
+            background: #3a0d0d;
+            border: 1px solid #7a2222;
+            color: #ff9898;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 22px;
+            font-size: 14px;
+        }
+
+        .field { margin-bottom: 18px; }
+        .field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #8ea6be;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+        }
+        .field input {
+            width: 100%;
+            padding: 13px 14px;
+            border-radius: 8px;
+            border: 1px solid #3f4d5c;
+            background: #111821;
+            color: #f5f7fa;
+            font-size: 15px;
+            transition: border-color .2s;
+        }
+        .field input:focus { outline: none; border-color: #008cff; }
+        .field .hint { color: #6b8099; font-size: 12px; margin-top: 5px; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #008cff;
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: .2s;
+            margin-top: 8px;
+        }
+        .btn-submit:hover { background: #22a3ff; transform: translateY(-2px); }
+
+        .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #8ea6be; }
+        .footer a { color: #008cff; text-decoration: none; font-weight: 600; }
+        .footer a:hover { color: #22a3ff; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+
+    <div class="brand">
+        <h1><span class="dot"></span>ADMIN SETUP</h1>
+        <p>Room Presence Monitoring System</p>
+    </div>
+
+    {% if is_setup %}
+    <div class="setup-notice">
+        🛠 First-time setup — create the admin account to get started
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/register">
+        <div class="field">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Choose a username"
+                   required minlength="3" autocomplete="username" autofocus>
+        </div>
+        <div class="field">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="Enter admin email"
+                   required autocomplete="email">
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Create a password"
+                   required minlength="6" autocomplete="new-password">
+            <div class="hint">Minimum 6 characters</div>
+        </div>
+        <div class="field">
+            <label>Confirm Password</label>
+            <input type="password" name="confirm_password" placeholder="Repeat your password"
+                   required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-submit">Create Admin Account</button>
+    </form>
+
+    {% if not is_setup %}
+    <div class="footer">
+        <a href="/login">← Back to Login</a>
+    </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

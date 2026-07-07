@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedules &amp; Enrollment — Room Presence System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='presence.css') }}">
+    <style>
+        .topbar-nav { display: flex; gap: 12px; align-items: center; }
+        .nav-link {
+            color: #8ea6be; text-decoration: none; font-size: 14px;
+            padding: 8px 14px; border-radius: 20px; border: 1px solid #2d3948; transition: .2s;
+        }
+        .nav-link:hover { color: #f5f7fa; border-color: #4a5d70; }
+        .nav-link.logout { color: #ff8d8d; border-color: #5a2222; }
+        .nav-link.logout:hover { background: #3a0d0d; }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 720px) { .upload-grid { grid-template-columns: 1fr; } }
+
+        .upload-card {
+            background: #18202a;
+            border: 1px solid #2f3d4d;
+            border-radius: 14px;
+            padding: 32px;
+        }
+
+        .card-icon  { font-size: 32px; margin-bottom: 14px; }
+        .card-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+        .card-desc  { color: #8ea6be; font-size: 13px; margin-bottom: 20px; }
+
+        .format-box {
+            background: #111821;
+            border: 1px solid #2d3948;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #5a7a99;
+            line-height: 1.9;
+            margin-bottom: 20px;
+        }
+        .format-box span { color: #78c7ff; }
+
+        .drop-zone {
+            border: 2px dashed #3f4d5c;
+            border-radius: 10px;
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: .2s;
+            position: relative;
+            margin-bottom: 14px;
+        }
+        .drop-zone:hover, .drop-zone.over { border-color: #008cff; background: #111d2a; }
+        .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .dz-icon { font-size: 30px; margin-bottom: 8px; }
+        .dz-main { font-size: 14px; color: #8ea6be; }
+        .dz-file { font-size: 13px; color: #00d26a; font-weight: 600; margin-top: 8px; min-height: 20px; }
+
+        .btn-upload {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #008cff;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: .2s;
+        }
+        .btn-upload:hover:not(:disabled) { background: #22a3ff; }
+        .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .result-box {
+            margin-top: 12px;
+            border-radius: 8px;
+            padding: 11px 14px;
+            font-size: 13px;
+            display: none;
+        }
+        .result-box.success { background: #0f3b24; border: 1px solid #1a6040; color: #75ffb0; display: block; }
+        .result-box.error   { background: #3a0d0d; border: 1px solid #7a2222; color: #ff9898; display: block; }
+
+        .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+            border-radius: 50%; animation: spin .7s linear infinite;
+            vertical-align: middle; margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<main class="app-shell">
+
+    <header class="topbar">
+        <div><h1>SCHEDULES &amp; ENROLLMENT</h1></div>
+        <div class="topbar-nav">
+            <span style="color:#8ea6be;font-size:14px;">{{ username }}</span>
+            <a href="/"        class="nav-link">← Monitor</a>
+            <a href="/students" class="nav-link">Students</a>
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/logout"  class="nav-link logout">Logout</a>
+        </div>
+    </header>
+
+    <div class="upload-grid">
+
+        <!-- Course Schedules -->
+        <div class="upload-card">
+            <div class="card-icon">📅</div>
+            <div class="card-title">Course Schedules</div>
+            <div class="card-desc">Upload course timetable — one row per course.</div>
+            <div class="format-box">
+                <span>course_code, days, time_window, room</span><br>
+                CS101, MWF, 9:00-10:00, IC1001<br>
+                CS102, TTH, 13:00-14:30, IC1002
+            </div>
+            <div class="drop-zone" id="drop-schedules"
+                 ondragover="onDragOver(event,'drop-schedules')"
+                 ondragleave="offDrag('drop-schedules')"
+                 ondrop="onDrop(event,'drop-schedules','file-schedules')">
+                <input type="file" id="file-schedules" accept=".csv" onchange="onFile('schedules')">
+                <div class="dz-icon">📄</div>
+                <div class="dz-main">Click or drag CSV here</div>
+                <div class="dz-file" id="name-schedules"></div>
+            </div>
+            <button class="btn-upload" id="btn-schedules" onclick="upload('schedules')" disabled>
+                Upload Schedules
+            </button>
+            <div class="result-box" id="result-schedules"></div>
+        </div>
+
+        <!-- Enrollments -->
+        <div class="upload-card">
+            <div class="card-icon">📋</div>
+            <div class="card-title">Student Enrollment</div>
+            <div class="card-desc">Link students to courses — one row per enrollment.</div>
+            <div class="format-box">
+                <span>student_id, course_code</span><br>
+                11001, CS101<br>
+                11001, CS102
+            </div>
+            <div class="drop-zone" id="drop-enrollments"
+                 ondragover="onDragOver(event,'drop-enrollments')"
+                 ondragleave="offDrag('drop-enrollments')"
+                 ondrop="onDrop(event,'drop-enrollments','file-enrollments')">
+                <input type="file" id="file-enrollments" accept=".csv" onchange="onFile('enrollments')">
+                <div class="dz-icon">📄</div>
+                <div class="dz-main">Click or drag CSV here</div>
+                <div class="dz-file" id="name-enrollments"></div>
+            </div>
+            <button class="btn-upload" id="btn-enrollments" onclick="upload('enrollments')" disabled>
+                Upload Enrollments
+            </button>
+            <div class="result-box" id="result-enrollments"></div>
+        </div>
+
+    </div>
+
+</main>
+
+<script>
+function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('over'); }
+function offDrag(id)        { document.getElementById(id).classList.remove('over'); }
+
+function onDrop(e, dropId, inputId) {
+    e.preventDefault(); offDrag(dropId);
+    if (!e.dataTransfer.files.length) return;
+    const input    = document.getElementById(inputId);
+    const transfer = new DataTransfer();
+    transfer.items.add(e.dataTransfer.files[0]);
+    input.files = transfer.files;
+    const type = inputId.replace('file-', '');
+    onFile(type);
+}
+
+function onFile(type) {
+    const file = document.getElementById('file-' + type).files[0];
+    document.getElementById('name-' + type).textContent  = file ? '📎 ' + file.name : '';
+    document.getElementById('btn-'  + type).disabled     = !file;
+    document.getElementById('result-' + type).className  = 'result-box';
+}
+
+async function upload(type) {
+    const input  = document.getElementById('file-' + type);
+    const btn    = document.getElementById('btn-'  + type);
+    const result = document.getElementById('result-' + type);
+    if (!input.files.length) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Uploading…';
+
+    const form = new FormData();
+    form.append('file', input.files[0]);
+
+    try {
+        const res  = await fetch('/api/upload/' + type, { method: 'POST', body: form });
+        const data = await res.json();
+
+        if (data.ok) {
+            result.className = 'result-box success';
+            result.innerHTML = `✓ <strong>${data.inserted}</strong> records added,
+                                <strong>${data.skipped}</strong> skipped.` +
+                (data.errors?.length ? `<br><small>${data.errors.join(', ')}</small>` : '');
+        } else {
+            result.className = 'result-box error';
+            result.textContent = 'Error: ' + data.error;
+        }
+    } catch {
+        result.className = 'result-box error';
+        result.textContent = 'Network error. Please try again.';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Upload ' + type.charAt(0).toUpperCase() + type.slice(1);
+}
+</script>
+
+</body>
+</html>
