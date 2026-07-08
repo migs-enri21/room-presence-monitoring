@@ -5,7 +5,7 @@ from mysql.connector import Error
 from datetime import datetime
 
 # CONFIGURATION: Set your password once here
-DB_PASSWORD = "root"
+DB_PASSWORD = "root100"
 
 
 def get_db_connection():
@@ -164,19 +164,19 @@ def get_user_by_username(username):
             conn.close()
 
 
-def save_face_encoding(student_id, encoding):
-    """Save face embedding blob for a user."""
+def save_face_encoding(username, encoding):
+    """Save face embedding blob for an admin user. Returns True if a row was updated."""
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         blob = pickle.dumps(np.array(encoding))
         cursor.execute(
-            "UPDATE users SET face_encoding = %s WHERE student_id = %s",
-            (blob, student_id)
+            "UPDATE users SET face_encoding = %s WHERE username = %s",
+            (blob, username)
         )
         conn.commit()
-        return True
+        return cursor.rowcount > 0
     except Error as e:
         print(f"Error saving face encoding: {e}")
         return False
@@ -187,16 +187,16 @@ def save_face_encoding(student_id, encoding):
 
 
 def get_all_face_encodings():
-    """Return list of (student_id, encoding array) for all users with face data."""
+    """Return list of (username, encoding array) for all admin users with face data."""
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT student_id, face_encoding FROM users WHERE face_encoding IS NOT NULL")
+        cursor.execute("SELECT username, face_encoding FROM users WHERE face_encoding IS NOT NULL")
         results = []
-        for student_id, blob in cursor.fetchall():
+        for username, blob in cursor.fetchall():
             encoding = np.array(pickle.loads(blob))
-            results.append((student_id, encoding))
+            results.append((username, encoding))
         return results
     except Error as e:
         print(f"Error loading face encodings: {e}")

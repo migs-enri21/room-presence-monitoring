@@ -102,6 +102,99 @@
         .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #8ea6be; }
         .footer a { color: #008cff; text-decoration: none; font-weight: 600; }
         .footer a:hover { color: #22a3ff; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 26px 0 18px;
+            color: #566878;
+            font-size: 12px;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #2f3d4d;
+        }
+
+        .btn-face {
+            width: 100%;
+            padding: 13px;
+            border-radius: 8px;
+            border: 1px solid #2f3d4d;
+            background: #111821;
+            color: #78c7ff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+        }
+        .btn-face:hover { border-color: #008cff; }
+
+        .face-panel { margin-top: 18px; display: none; }
+        .face-panel.open { display: block; }
+
+        .camera-box {
+            position: relative;
+            background: #111821;
+            border: 2px solid #2f3d4d;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            aspect-ratio: 4/3;
+        }
+        .camera-box video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transform: scaleX(-1);
+        }
+        .camera-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .face-guide {
+            width: 150px; height: 185px;
+            border: 3px solid rgba(0, 210, 106, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+        }
+
+        .status-box {
+            min-height: 40px;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .status-box.idle    { background: #1a212a; color: #8ea6be; border: 1px solid #2d3948; }
+        .status-box.success { background: #0f3b24; color: #75ffb0; border: 1px solid #1a6040; }
+        .status-box.error   { background: #3a0d0d; color: #ff9898; border: 1px solid #7a2222; }
+        .status-box.loading { background: #1a212a; color: #78c7ff; border: 1px solid #2d3948; }
+
+        .spinner {
+            width: 16px; height: 16px;
+            border: 3px solid #2d3948;
+            border-top-color: #78c7ff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        canvas { display: none; }
     </style>
 </head>
 <body>
@@ -132,11 +225,95 @@
         <button type="submit" class="btn-submit">Sign In</button>
     </form>
 
+    <div class="divider">or</div>
+
+    <button type="button" class="btn-face" id="toggleFaceBtn">📷 Login with Face</button>
+
+    <div class="face-panel" id="facePanel">
+        <div class="camera-box">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="camera-overlay"><div class="face-guide"></div></div>
+        </div>
+        <canvas id="canvas"></canvas>
+        <div id="status" class="status-box idle">Align your face with the circle</div>
+        <button type="button" class="btn-submit" id="captureBtn">Capture &amp; Sign In</button>
+    </div>
+
     <div class="footer">
         No account yet? <a href="/register">Register here</a>
     </div>
 
 </div>
+
+<script>
+const toggleBtn  = document.getElementById('toggleFaceBtn');
+const facePanel  = document.getElementById('facePanel');
+const video      = document.getElementById('video');
+const canvas     = document.getElementById('canvas');
+const status     = document.getElementById('status');
+const captureBtn = document.getElementById('captureBtn');
+let stream = null;
+
+function setStatus(type, msg, spinner = false) {
+    status.className = 'status-box ' + type;
+    status.innerHTML = spinner
+        ? `<div class="spinner"></div><span>${msg}</span>`
+        : msg;
+}
+
+toggleBtn.addEventListener('click', async () => {
+    const opening = !facePanel.classList.contains('open');
+    facePanel.classList.toggle('open', opening);
+    toggleBtn.textContent = opening ? '✕ Cancel Face Login' : '📷 Login with Face';
+
+    if (opening && !stream) {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        } catch (err) {
+            setStatus('error', 'Camera error: ' + err.message);
+        }
+    } else if (!opening && stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+    }
+});
+
+captureBtn.addEventListener('click', async () => {
+    if (!stream) return;
+    captureBtn.disabled = true;
+    setStatus('loading', 'Verifying face…', true);
+
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+    try {
+        const res  = await fetch('/api/face-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            setStatus('success', `✓ Welcome, ${data.username}! Redirecting…`);
+            stream.getTracks().forEach(t => t.stop());
+            setTimeout(() => window.location.href = '/', 1200);
+        } else {
+            setStatus('error', data.error || 'Face not recognized.');
+            captureBtn.disabled = false;
+        }
+    } catch (e) {
+        setStatus('error', 'Network error. Please try again.');
+        captureBtn.disabled = false;
+    }
+});
+</script>
 
 </body>
 </html>

@@ -3,8 +3,13 @@ from functools import wraps
 import base64
 import csv
 import os
+import sys
 import threading
 import time as time_module
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 import cv2
 import numpy as np
@@ -482,6 +487,25 @@ def sync_workers():
                 worker.start()
 
 
+workers_started = False
+workers_started_lock = threading.Lock()
+
+
+def ensure_workers_started():
+    """Start camera workers on first dashboard visit, not at process boot.
+
+    Cameras hold exclusive OS-level access on Windows, so starting them
+    eagerly at boot blocks the browser's getUserMedia() calls used for
+    face login/registration. Deferring until someone actually reaches the
+    dashboard keeps the webcam free for those flows until it's needed.
+    """
+    global workers_started
+    with workers_started_lock:
+        if not workers_started:
+            sync_workers()
+            workers_started = True
+
+
 # ─── Routes ─────────────────────────────────────────────────────────────────
 
 @app.route("/login", methods=["GET", "POST"])
@@ -533,7 +557,7 @@ def register():
             hashed = generate_password_hash(password)
             success, msg = create_user(username, email, hashed)
             if success:
-                return redirect(url_for("login"))
+                return redirect(url_for("register_face", username=username))
             error = msg
 
     is_setup = get_admin_count() == 0
@@ -549,6 +573,7 @@ def logout():
 @app.route("/")
 @login_required
 def index():
+    ensure_workers_started()
     return render_template("presence.html", username=session.get('username', ''))
 
 
@@ -625,20 +650,23 @@ def dashboard():
 
 @app.route("/register/face")
 def register_face():
-    student_id = request.args.get("student_id", "")
-    if not student_id:
+    username = request.args.get("username", "")
+    if not username or not get_user_by_username(username):
         return redirect(url_for("login"))
-    return render_template("register_face.html", student_id=student_id)
+    return render_template("register_face.html", username=username)
 
 
 @app.route("/api/save-face", methods=["POST"])
 def api_save_face():
     data = request.get_json(force=True)
-    student_id = data.get("student_id", "")
+    username = data.get("username", "")
     image_data = data.get("image", "")
 
-    if not student_id or not image_data:
+    if not username or not image_data:
         return jsonify({"ok": False, "error": "Missing data"}), 400
+
+    if not get_user_by_username(username):
+        return jsonify({"ok": False, "error": "Unknown user"}), 404
 
     try:
         from deepface import DeepFace
@@ -654,7 +682,46 @@ def api_save_face():
             detector_backend="opencv"
         )
         embedding = result[0]["embedding"]
-        save_face_encoding(student_id, embedding)
+        ok = save_face_encoding(username, embedding)
+        if not ok:
+            return jsonify({"ok": False, "error": "Could not save face for this user."}), 400
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/save-face-upload", methods=["POST"])
+def api_save_face_upload():
+    username = request.form.get("username", "").strip()
+    file = request.files.get("photo")
+
+    if not username or not file or not file.filename:
+        return jsonify({"ok": False, "error": "Missing username or photo"}), 400
+
+    if not get_user_by_username(username):
+        return jsonify({"ok": False, "error": "Unknown user"}), 404
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png"):
+        return jsonify({"ok": False, "error": "Only JPG or PNG files are allowed"}), 400
+
+    img_bytes = file.read()
+    nparr = np.frombuffer(img_bytes, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if frame is None:
+        return jsonify({"ok": False, "error": "Could not decode image file"}), 400
+
+    try:
+        from deepface import DeepFace
+        result = DeepFace.represent(
+            img_path=frame,
+            model_name="Facenet",
+            enforce_detection=True,
+            detector_backend="opencv"
+        )
+        ok = save_face_encoding(username, result[0]["embedding"])
+        if not ok:
+            return jsonify({"ok": False, "error": "Could not save face for this user."}), 400
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
@@ -984,5 +1051,4 @@ def health():
 if __name__ == "__main__":
     ensure_log_files()
     init_db()
-    sync_workers()
     app.run(host="0.0.0.0", port=5001, debug=True, threaded=True)

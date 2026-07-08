@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Registration — Room Presence System</title>
+    <title>Enroll Face Login — Room Presence System</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -147,14 +147,56 @@
         .skip-link:hover { color: #8ea6be; }
 
         canvas { display: none; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0 16px;
+            color: #566878;
+            font-size: 12px;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #2f3d4d;
+        }
+
+        .upload-box {
+            border: 2px dashed #2f3d4d;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        .upload-box label {
+            display: block;
+            font-size: 13px;
+            color: #8ea6be;
+            margin-bottom: 8px;
+        }
+        .upload-box input[type=file] {
+            width: 100%;
+            color: #f5f7fa;
+            font-size: 13px;
+        }
+        .btn-secondary {
+            background: #111821;
+            border: 1px solid #2f3d4d;
+            color: #78c7ff;
+        }
+        .btn-secondary:hover:not(:disabled) { background: #16202b; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1><span class="dot"></span>FACE REGISTRATION</h1>
+    <h1><span class="dot"></span>ENROLL FACE LOGIN</h1>
     <p class="subtitle">Position your face inside the circle and click Capture</p>
-    <div class="student-badge">Student ID: {{ student_id }}</div>
+    <div class="student-badge">Account: {{ username }}</div>
 
     <div class="camera-box">
         <video id="video" autoplay playsinline muted></video>
@@ -168,15 +210,26 @@
     <div id="status" class="status-box idle">Ready — align your face with the circle</div>
 
     <button id="captureBtn">Capture Face</button>
+
+    <div class="divider">or</div>
+
+    <div class="upload-box">
+        <label for="photoInput">Upload a photo instead</label>
+        <input type="file" id="photoInput" accept=".jpg,.jpeg,.png">
+    </div>
+    <button type="button" class="btn-secondary" id="uploadBtn" disabled>Use This Photo</button>
+
     <a href="/login" class="skip-link">Skip for now (you can do this later)</a>
 </div>
 
 <script>
-const video   = document.getElementById('video');
-const canvas  = document.getElementById('canvas');
-const status  = document.getElementById('status');
-const btn     = document.getElementById('captureBtn');
-const STUDENT_ID = "{{ student_id }}";
+const video      = document.getElementById('video');
+const canvas     = document.getElementById('canvas');
+const status     = document.getElementById('status');
+const btn        = document.getElementById('captureBtn');
+const photoInput = document.getElementById('photoInput');
+const uploadBtn  = document.getElementById('uploadBtn');
+const USERNAME = "{{ username }}";
 
 function setStatus(type, msg, spinner = false) {
     status.className = 'status-box ' + type;
@@ -185,9 +238,15 @@ function setStatus(type, msg, spinner = false) {
         : msg;
 }
 
+function onEnrolled() {
+    setStatus('success', '✓ Face registered! Redirecting to login…');
+    if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+    setTimeout(() => window.location.href = '/login', 1800);
+}
+
 navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => { video.srcObject = stream; })
-    .catch(err => setStatus('error', 'Camera error: ' + err.message));
+    .catch(err => setStatus('error', 'Camera unavailable — use the upload option below instead. (' + err.message + ')'));
 
 btn.addEventListener('click', async () => {
     btn.disabled = true;
@@ -205,20 +264,50 @@ btn.addEventListener('click', async () => {
         const res  = await fetch('/api/save-face', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ student_id: STUDENT_ID, image: imageData })
+            body: JSON.stringify({ username: USERNAME, image: imageData })
         });
         const data = await res.json();
 
         if (data.ok) {
-            setStatus('success', '✓ Face registered! Redirecting to login…');
-            video.srcObject.getTracks().forEach(t => t.stop());
-            setTimeout(() => window.location.href = '/login', 1800);
+            onEnrolled();
         } else {
             setStatus('error', 'Error: ' + data.error + ' — please try again.');
             btn.disabled = false;
         }
     } catch (e) {
         setStatus('error', 'Network error. Please try again.');
+        btn.disabled = false;
+    }
+});
+
+photoInput.addEventListener('change', () => {
+    uploadBtn.disabled = !photoInput.files.length;
+});
+
+uploadBtn.addEventListener('click', async () => {
+    if (!photoInput.files.length) return;
+    uploadBtn.disabled = true;
+    btn.disabled = true;
+    setStatus('loading', 'Analyzing photo…', true);
+
+    const formData = new FormData();
+    formData.append('username', USERNAME);
+    formData.append('photo', photoInput.files[0]);
+
+    try {
+        const res  = await fetch('/api/save-face-upload', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.ok) {
+            onEnrolled();
+        } else {
+            setStatus('error', 'Error: ' + data.error + ' — please try a different photo.');
+            uploadBtn.disabled = false;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        setStatus('error', 'Network error. Please try again.');
+        uploadBtn.disabled = false;
         btn.disabled = false;
     }
 });
