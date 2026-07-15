@@ -39,6 +39,15 @@ DETECTION_EVERY_N_FRAMES = 3
 JPEG_QUALITY = 80
 
 
+DESIGNATED_START = time(14, 40)  # 2:40 PM
+DESIGNATED_END   = time(16, 40)  # 4:40 PM
+
+
+def is_designated_time(now):
+    current = now.time()
+    return DESIGNATED_START <= current <= DESIGNATED_END
+
+
 DEFAULT_CONFIG = {
     "start_time": "08:00",
     "end_time": "17:00",
@@ -278,22 +287,25 @@ class CameraWorker:
             presence_detected = bool(detections) or motion_detected
             schedule = schedule_status(now, start_time, end_time)
 
+            in_designated = is_designated_time(now)
+
+            # Set status for logging purposes (keeps overtime/schedule info)
             if presence_detected and schedule == "overtime":
                 status = "overtime"
-                label = "OVERTIME"
-                color = (0, 0, 255)
             elif presence_detected and schedule == "scheduled":
                 status = "scheduled_presence"
-                label = "Presence detected"
-                color = (0, 180, 0)
             elif presence_detected:
                 status = "outside_schedule_presence"
-                label = "Presence outside schedule"
-                color = (0, 165, 255)
             else:
                 status = "no_presence"
-                label = "No presence"
-                color = (180, 180, 180)
+
+            # Set label and color for display based on motion and designated time
+            if presence_detected:
+                label = "Motion detected"
+                color = (0, 180, 0) if in_designated else (0, 0, 255)  # Green in designated, Red outside
+            else:
+                label = "Room Empty"
+                color = (0, 255, 255) if in_designated else (0, 180, 0)  # Yellow in designated, Green outside
 
             # ── Student identification (every 15 detection cycles) ──────────
             self.id_cycle += 1
@@ -308,11 +320,11 @@ class CameraWorker:
                 if active_sched:
                     label  = f"{student_name} — In Class ({active_sched['course_code']})"
                     status = "scheduled_presence"
-                    color  = (0, 180, 0)
+                    color  = (0, 180, 0) if in_designated else (0, 0, 255)
                 else:
                     label  = f"{student_name} — No Class Scheduled"
                     status = "outside_schedule_presence"
-                    color  = (0, 165, 255)
+                    color  = (0, 180, 0) if in_designated else (0, 0, 255)
             elif presence_detected and not self.cached_identifications:
                 label = label + " (Unidentified)"
             # ────────────────────────────────────────────────────────────────
