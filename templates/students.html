@@ -227,14 +227,6 @@
             <h3>Total Students</h3>
             <h2>{{ students | length }}</h2>
         </div>
-        <div class="stat-card">
-            <h3>Face Registered</h3>
-            <h2 class="green">{{ students | selectattr('has_face') | list | length }}</h2>
-        </div>
-        <div class="stat-card">
-            <h3>No Face Yet</h3>
-            <h2 class="orange">{{ students | rejectattr('has_face') | list | length }}</h2>
-        </div>
     </div>
 
     <!-- Student List -->

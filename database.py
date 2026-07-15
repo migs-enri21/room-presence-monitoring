@@ -5,7 +5,7 @@ from mysql.connector import Error
 from datetime import datetime
 
 # CONFIGURATION: Set your password once here
-DB_PASSWORD = "root100"
+DB_PASSWORD = "root"
 
 
 def get_db_connection():
