@@ -35,8 +35,8 @@ HEARTBEAT_SECONDS = 180
 PRESENCE_LOST_SECONDS = 10
 DISPLAY_SIZE = (960, 540)
 TARGET_STREAM_FPS = 30
-DETECTION_EVERY_N_FRAMES = 3
-JPEG_QUALITY = 80
+DETECTION_EVERY_N_FRAMES = 5
+JPEG_QUALITY = 75
 
 
 DESIGNATED_START = time(14, 40)  # 2:40 PM
@@ -64,7 +64,7 @@ DEFAULT_CONFIG = {
         {
             "id": "phone",
             "name": "Android IP Camera",
-            "source": "http://172.19.249.67:8080/video",
+            "source": "http://172.19.248.156:8080/video",
             "enabled": True,
         },
     ],
@@ -230,7 +230,12 @@ class CameraWorker:
                 time_module.sleep(1)
                 continue
 
-            frame = cv2.resize(frame, DISPLAY_SIZE)
+            
+            if self.camera_id == "phone":
+                frame = cv2.resize(frame, (640, 360))
+            else:
+                frame = cv2.resize(frame, DISPLAY_SIZE)
+
             processed, presence_detected, status = self.process_frame(frame)
 
             with self.lock:
