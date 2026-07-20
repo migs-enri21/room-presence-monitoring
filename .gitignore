@@ -1,25 +1,18 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual Environments
 venv/
 .venv/
 
-# VS Code
 .vscode/
 
-# Environment Variables
 .env
 
-# Runtime Logs
 presence_logs/frames/*
 presence_logs/presence_events.csv
 
-# OS Files
 Thumbs.db
 .DS_Store
 
-# Python Cache
 .pytest_cache/

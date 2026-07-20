@@ -4,7 +4,6 @@ import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
 
-# CONFIGURATION: Set your password once here
 DB_PASSWORD = "root"
 
 
@@ -47,7 +46,6 @@ def init_db():
                 photo_path VARCHAR(255)
             )
         ''')
-        # Safe migrations: add columns that may be missing from older tables
         for col_sql in [
             "ALTER TABLE students ADD COLUMN face_encoding LONGBLOB",
             "ALTER TABLE students ADD COLUMN photo_path VARCHAR(255)",

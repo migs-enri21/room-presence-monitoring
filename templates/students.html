@@ -6,7 +6,7 @@
     <title>Students — Room Presence System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='presence.css') }}">
     <style>
-        /* ── Nav ─────────────────────────────────────────── */
+
         .topbar-nav { display: flex; gap: 12px; align-items: center; }
         .nav-link {
             color: #8ea6be; text-decoration: none; font-size: 14px;
@@ -16,7 +16,7 @@
         .nav-link.logout { color: #ff8d8d; border-color: #5a2222; }
         .nav-link.logout:hover { background: #3a0d0d; }
 
-        /* ── Stats ───────────────────────────────────────── */
+
         .stats-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -35,7 +35,7 @@
         .stat-card h2.green  { color: #00d26a; }
         .stat-card h2.orange { color: #ffa050; }
 
-        /* ── Panel ───────────────────────────────────────── */
+
         .student-panel {
             background: #18202a;
             border: 1px solid #2f3d4d;
@@ -67,7 +67,7 @@
         }
         .search-box:focus { outline: none; border-color: #008cff; }
 
-        /* ── Toolbar buttons ─────────────────────────────── */
+
         .btn {
             padding: 9px 16px;
             border-radius: 8px;
@@ -86,7 +86,6 @@
         .btn-primary-sm  { border: none; background: #008cff; color: #fff; }
         .btn-primary-sm:hover { background: #22a3ff; }
 
-        /* ── Table ───────────────────────────────────────── */
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
         thead { background: #111821; }
@@ -114,7 +113,6 @@
 
         .action-btns { display: flex; gap: 6px; align-items: center; }
 
-        /* Course pills */
         .course-pills { display: flex; flex-wrap: wrap; gap: 5px; min-width: 120px; }
         .course-pill {
             padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700;
@@ -149,7 +147,7 @@
 
         @media (max-width: 900px) { .stats-row { grid-template-columns: 1fr; } }
 
-        /* ── Shared Modal base ───────────────────────────── */
+      
         .modal-overlay {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
@@ -185,7 +183,7 @@
         .modal-result.error   { background: #3a0d0d; color: #ff9898; border: 1px solid #7a2222; display: block; }
         .modal-result.warning { background: #2a1e00; color: #ffc96e; border: 1px solid #5a4000; display: block; }
 
-        /* ── Import CSV modal specifics ──────────────────── */
+        
         .drop-zone {
             border: 2px dashed #3f4d5c; border-radius: 12px;
             padding: 32px 20px; text-align: center; cursor: pointer;
@@ -210,7 +208,6 @@
 
 <main class="app-shell">
 
-    <!-- Top bar -->
     <header class="topbar">
         <div><h1>STUDENT MANAGEMENT</h1></div>
         <div class="topbar-nav">
@@ -221,7 +218,7 @@
         </div>
     </header>
 
-    <!-- Stats -->
+    
     <div class="stats-row">
         <div class="stat-card">
             <h3>Total Students</h3>
@@ -229,7 +226,7 @@
         </div>
     </div>
 
-    <!-- Student List -->
+   
     <div class="student-panel">
         <div class="panel-header">
             <h2>All Students</h2>
@@ -318,7 +315,7 @@
         </div>
     </div>
 
-    <!-- Courses Panel -->
+    
     <div class="student-panel" style="margin-top:24px;">
         <div class="panel-header">
             <h2>📅 Course Schedules</h2>
@@ -364,7 +361,7 @@
 
 </main>
 
-<!-- ── Enrollment Modal ──────────────────────────────────────── -->
+
 <div class="modal-overlay" id="enrollOverlay" onclick="closeBg(event,'enrollOverlay')">
     <div class="modal" style="width:min(480px,94vw)">
         <div class="modal-title">📋 Manage Schedule</div>
@@ -394,7 +391,7 @@
     </div>
 </div>
 
-<!-- ── Add Course Modal ──────────────────────────────────────── -->
+
 <div class="modal-overlay" id="addCourseOverlay" onclick="closeBg(event,'addCourseOverlay')">
     <div class="modal">
         <div class="modal-title">📅 Add Course</div>
@@ -426,7 +423,7 @@
     </div>
 </div>
 
-<!-- ── Import CSV Modal ──────────────────────────────────────── -->
+
 <div class="modal-overlay" id="importOverlay" onclick="closeBg(event,'importOverlay')">
     <div class="modal">
         <div class="modal-title">📥 Import Students</div>
@@ -458,7 +455,7 @@
     </div>
 </div>
 
-<!-- ── Add Student Modal ─────────────────────────────────────── -->
+
 <div class="modal-overlay" id="addOverlay" onclick="closeBg(event,'addOverlay')">
     <div class="modal">
         <div class="modal-title">+ Add Student</div>
@@ -487,7 +484,7 @@
 </div>
 
 <script>
-/* ── Table filter ─────────────────────────────────────────────── */
+
 function filterTable() {
     const q = document.getElementById('searchBox').value.toLowerCase();
     document.querySelectorAll('#studentTable tbody tr:not(.empty-row)').forEach(row => {
@@ -496,13 +493,13 @@ function filterTable() {
     });
 }
 
-/* ── Modal helpers ───────────────────────────────────────────── */
+
 function closeBg(e, id) {
     if (e.target === document.getElementById(id))
         document.getElementById(id).classList.remove('open');
 }
 
-/* ── Import modal ────────────────────────────────────────────── */
+
 function openImport() {
     document.getElementById('importFile').value = '';
     document.getElementById('importFileName').textContent = '';
@@ -564,7 +561,7 @@ async function runImport() {
     }
 }
 
-/* ── Add Student modal ───────────────────────────────────────── */
+
 function openAdd() {
     ['inp-id','inp-last','inp-first'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('add-result').className = 'modal-result';
@@ -612,7 +609,7 @@ async function saveStudent() {
     }
 }
 
-/* ── Delete ──────────────────────────────────────────────────── */
+
 async function deleteStudent(id, name) {
     if (!confirm(`Delete ${name} (${id})?\nThis cannot be undone.`)) return;
     try {
@@ -622,7 +619,7 @@ async function deleteStudent(id, name) {
     } catch { alert('Network error. Please try again.'); }
 }
 
-/* ── Course modal ────────────────────────────────────────────── */
+
 function openAddCourse() {
     ['c-code','c-days','c-time','c-room'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('course-result').className = 'modal-result';
@@ -678,7 +675,7 @@ async function deleteCourse(code) {
     data.ok ? window.location.reload() : alert('Error deleting course.');
 }
 
-/* ── Enrollment modal ────────────────────────────────────────── */
+
 let currentEnrollStudent = null;
 let allCourses = [];
 
@@ -702,7 +699,6 @@ async function loadEnrollData() {
     const enrolled = await enrollRes.json();
     allCourses     = await coursesRes.json();
 
-    // Render enrolled list
     const list = document.getElementById('enroll-list');
     if (enrolled.length === 0) {
         list.innerHTML = '<span style="color:#3d5068;font-size:13px;">No courses enrolled yet.</span>';
@@ -720,7 +716,6 @@ async function loadEnrollData() {
         `).join('');
     }
 
-    // Populate dropdown with unenrolled courses only
     const enrolledCodes = enrolled.map(c => c.course_code);
     const available = allCourses.filter(c => !enrolledCodes.includes(c.course_code));
     const sel = document.getElementById('courseSelect');
@@ -761,7 +756,7 @@ async function removeEnrollment(course_code) {
     await loadEnrollData();
 }
 
-/* ── Keyboard shortcuts ──────────────────────────────────────── */
+
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         closeImport(); closeAdd(); closeEnroll(); closeAddCourse();

@@ -39,8 +39,8 @@ DETECTION_EVERY_N_FRAMES = 5
 JPEG_QUALITY = 75
 
 
-DESIGNATED_START = time(14, 40)  # 2:40 PM
-DESIGNATED_END   = time(16, 40)  # 4:40 PM
+DESIGNATED_START = time(14, 40)
+DESIGNATED_END   = time(16, 40)
 
 
 def is_designated_time(now):
@@ -80,7 +80,6 @@ recent_events = []
 recent_events_lock = threading.Lock()
 
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
 
 def ensure_log_files():
     os.makedirs(SNAPSHOT_DIR, exist_ok=True)
@@ -150,7 +149,7 @@ def login_required(f):
     return decorated
 
 
-# ─── Camera Worker ──────────────────────────────────────────────────────────
+
 
 class CameraWorker:
     def __init__(self, camera_config):
@@ -182,7 +181,7 @@ class CameraWorker:
         self.student_encodings = []
         self.encodings_loaded_at = 0
         self.id_cycle = 0
-        self.cached_identifications = []  # list of (student_id, name)
+        self.cached_identifications = []
 
         self.face_detector = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -294,7 +293,6 @@ class CameraWorker:
 
             in_designated = is_designated_time(now)
 
-            # Set status for logging purposes (keeps overtime/schedule info)
             if presence_detected and schedule == "overtime":
                 status = "overtime"
             elif presence_detected and schedule == "scheduled":
@@ -304,15 +302,13 @@ class CameraWorker:
             else:
                 status = "no_presence"
 
-            # Set label and color for display based on motion and designated time
             if presence_detected:
                 label = "Motion detected"
-                color = (0, 180, 0) if in_designated else (0, 0, 255)  # Green in designated, Red outside
+                color = (0, 180, 0) if in_designated else (0, 0, 255)
             else:
                 label = "Room Empty"
-                color = (0, 255, 255) if in_designated else (0, 180, 0)  # Yellow in designated, Green outside
+                color = (0, 255, 255) if in_designated else (0, 180, 0)
 
-            # ── Student identification (every 15 detection cycles) ──────────
             self.id_cycle += 1
             if self.id_cycle % 15 == 1:
                 self._reload_encodings_if_needed()
@@ -332,7 +328,6 @@ class CameraWorker:
                     color  = (0, 180, 0) if in_designated else (0, 0, 255)
             elif presence_detected and not self.cached_identifications:
                 label = label + " (Unidentified)"
-            # ────────────────────────────────────────────────────────────────
 
             self.cached_detections = detections
             self.cached_motion_boxes = motion_boxes
@@ -473,7 +468,6 @@ class CameraWorker:
             yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
 
 
-# ─── Worker management ──────────────────────────────────────────────────────
 
 def sync_workers():
     with config_lock:
@@ -523,14 +517,14 @@ def ensure_workers_started():
             workers_started = True
 
 
-# ─── Routes ─────────────────────────────────────────────────────────────────
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if 'logged_in' in session:
         return redirect(url_for('index'))
 
-    # First-time setup — no admin exists yet
+
     if get_admin_count() == 0:
         return redirect(url_for('register'))
 

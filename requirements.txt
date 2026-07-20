@@ -50,7 +50,6 @@ mtcnn==1.0.0
 mysql-connector-python==9.7.0
 namex==0.1.0
 numpy==2.5.0
-# opencv-contrib-python already provides the cv2 module; do not install opencv-python alongside it.
 opencv-contrib-python==4.13.0.92
 opt_einsum==3.4.0
 optree==0.19.1

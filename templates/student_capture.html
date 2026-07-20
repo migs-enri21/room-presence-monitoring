@@ -49,7 +49,7 @@
         .student-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
         .student-id   { color: #78c7ff; font-size: 14px; }
 
-        /* Tabs */
+        
         .tabs {
             display: flex;
             gap: 0;
@@ -75,7 +75,7 @@
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
-        /* Webcam tab */
+        
         .instructions {
             color: #8ea6be;
             font-size: 13px;
@@ -111,7 +111,7 @@
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
         }
 
-        /* Upload tab */
+        
         .upload-zone {
             border: 2px dashed #2f3d4d;
             border-radius: 12px;
@@ -156,7 +156,7 @@
             border-top: 1px solid #2d3948;
         }
 
-        /* Shared */
+        
         .status-box {
             min-height: 48px;
             border-radius: 8px;
@@ -233,13 +233,13 @@
         <div class="student-id">Student ID: {{ student.student_id }}</div>
     </div>
 
-    <!-- Tabs -->
+    
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('webcam', this)">📷 Webcam Capture</button>
         <button class="tab-btn" onclick="switchTab('upload', this)">📁 Upload Photo</button>
     </div>
 
-    <!-- Webcam Tab -->
+    
     <div id="tab-webcam" class="tab-panel active">
         <p class="instructions">
             Position the student's face inside the circle, then click <strong>Capture Face</strong>.
@@ -263,7 +263,7 @@
         </button>
     </div>
 
-    <!-- Upload Photo Tab -->
+    
     <div id="tab-upload" class="tab-panel">
         <p class="instructions">
             Upload a clear front-facing photo (JPG or PNG).<br>
@@ -298,7 +298,6 @@
 <script>
 const STUDENT_ID = "{{ student.student_id }}";
 
-// ── Tab switching ─────────────────────────────────────────────────────────
 function switchTab(name, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -306,7 +305,6 @@ function switchTab(name, btn) {
     document.getElementById('tab-' + name).classList.add('active');
 }
 
-// ── Status helpers ────────────────────────────────────────────────────────
 function setStatus(id, type, msg, spinner = false) {
     const el = document.getElementById(id);
     el.className = 'status-box ' + type;
@@ -315,7 +313,6 @@ function setStatus(id, type, msg, spinner = false) {
         : msg;
 }
 
-// ── Webcam capture ────────────────────────────────────────────────────────
 navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => { document.getElementById('video').srcObject = stream; })
     .catch(err => {
@@ -360,7 +357,6 @@ async function captureAndSave() {
     }
 }
 
-// ── File upload ───────────────────────────────────────────────────────────
 let selectedFile = null;
 
 const uploadZone = document.getElementById('uploadZone');
